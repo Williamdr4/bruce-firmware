@@ -866,6 +866,7 @@ void drawStatusBar() {
         drawBatteryStatus(bat);
     } else bat_margin = 26;
     if (sdcardMounted) {
+        tft.setTextDatum(TL_DATUM);
         tft.setTextColor(bruceConfig.priColor, bruceConfig.bgColor);
         tft.setTextSize(FP);
         tft.drawString("SD", tftWidth - (bat_margin), 12);
