@@ -81,6 +81,7 @@ public:
     int colorInverted = 1;
     int badUSBBLEKeyboardLayout = 0;
     int badUSBBLEKeyDelay = 50;
+    int menuStyle = 1; // 0: Old (Horizontal), 1: New (Vertical)
 
     std::vector<String> disabledMenus = {};
 

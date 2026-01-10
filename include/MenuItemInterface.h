@@ -14,8 +14,28 @@ public:
 
     String getName() const { return _name; }
 
+    // Set dimensions for list view rendering
+    void setDimensions(int x, int y, int w, int h) {
+        iconCenterX = x;
+        iconCenterY = y;
+        iconAreaW = w;
+        iconAreaH = h;
+
+        iconAreaX = iconCenterX - iconAreaW / 2;
+        iconAreaY = iconCenterY - iconAreaH / 2;
+
+        // Update arrow areas just in case
+        arrowAreaX = BORDER_PAD_X;
+        arrowAreaW = iconAreaX - arrowAreaX;
+
+        customDimensionsSet = true;
+    }
+
     void draw(float scale = 1) {
-        if (rotation != bruceConfigPins.rotation) resetCoordinates();
+        if (rotation != bruceConfigPins.rotation || customDimensionsSet) {
+            resetCoordinates();
+            customDimensionsSet = false;
+        }
         if (!getTheme()) {
             if (bruceConfig.themePath != "") {
                 // Image is not available for active theme, clear larger area
@@ -97,6 +117,7 @@ public:
     }
 
 protected:
+    bool customDimensionsSet = false;
     String _name = "";
     uint8_t rotation = ROTATION;
 

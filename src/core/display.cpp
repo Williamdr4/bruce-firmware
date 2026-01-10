@@ -5,6 +5,7 @@
 #include "settings.h" //for timeStr
 #include "utils.h"
 #include <JPEGDecoder.h>
+#include <MenuItemInterface.h>
 #include <interface.h> //for charging ischarging to print charging indicator
 #include <memory>
 
@@ -443,6 +444,95 @@ void padprintln(double n, int digits, int16_t padx) {
     tft.println(n, digits);
 }
 
+void drawVerticalMenu(int index, std::vector<Option> &options) {
+    // Fill screen with background
+    tft.fillScreen(bruceConfig.bgColor);
+    drawStatusBar();
+
+    int menuSize = options.size();
+    if (menuSize == 0) return;
+
+    // Define 3 slots
+    int topMargin = 25; // Space for status bar
+
+    // Dynamic footer height
+    int footerHeight = 5;
+#if defined(HAS_TOUCH)
+    footerHeight = 45;
+#endif
+
+    int availableHeight = tftHeight - topMargin - footerHeight;
+    int slotHeight = availableHeight / 3;
+
+    // Indices (Wrap around)
+    int prevIdx = (index - 1 + menuSize) % menuSize;
+    int nextIdx = (index + 1) % menuSize;
+    int indices[3] = {prevIdx, index, nextIdx};
+
+    // Calculate icon position and size (base)
+    int baseIconSize = slotHeight - 6;
+    if (baseIconSize > 40) baseIconSize = 40; // Max base size
+
+    int iconX = 32; // Center X for icon (Moved slightly right)
+    // Ensure text starts after the widest possible icon
+    int textX = iconX + (baseIconSize * 1.1) / 2 + 10;
+
+    for (int i = 0; i < 3; i++) {
+        int optIdx = indices[i];
+        int centerY = topMargin + i * slotHeight + slotHeight / 2;
+        bool isSelected = (i == 1);
+
+        // Determine specific sizes for this item
+        int currentIconSize;
+        int currentTextSize;
+
+        if (isSelected) {
+            currentIconSize = (int)(baseIconSize * 0.85); // 85% base size for selected
+            int maxLen = (tftWidth - textX) / (LW * FG) - 1;
+            currentTextSize = (options[optIdx].label.length() <= maxLen) ? FG : FM;
+        } else {
+            currentIconSize = (int)(baseIconSize * 0.75); // 75% base size for others
+            currentTextSize = FM;                         // Standard size
+        }
+
+        // Calculate scale for this item
+        float scale = (float)currentIconSize / 60.0f;
+
+        // Retrieve Item
+        Option &opt = options[optIdx];
+        MenuItemInterface *item = static_cast<MenuItemInterface *>(opt.hoverPointer);
+
+        if (item) {
+            // Draw Icon (This clears its area, so do it BEFORE borders)
+            // Limit height to slotHeight - 8 to prevent clearing the selection borders
+            // which are at top+2 and bottom-2 (clearing top+4 to bottom-4 is safe)
+            item->setDimensions(iconX, centerY, currentIconSize + 10, slotHeight - 8);
+            item->drawIcon(scale);
+        }
+
+        // Draw Selection Box (Thicker) - Draw AFTER icon to prevent clipping
+        if (isSelected) {
+            int boxHeight = (int)((slotHeight - 4) * 1.2); // 20% Bigger
+            // Draw outer
+            tft.drawRoundRect(5, centerY - boxHeight / 2, tftWidth - 10, boxHeight, 8, bruceConfig.priColor);
+            // Draw inner for thickness
+            tft.drawRoundRect(
+                6, centerY - boxHeight / 2 + 1, tftWidth - 12, boxHeight - 2, 7, bruceConfig.priColor
+            );
+        }
+
+        // Draw Label
+        tft.setTextDatum(ML_DATUM);
+        tft.setTextColor(isSelected ? bruceConfig.priColor : bruceConfig.secColor, bruceConfig.bgColor);
+        tft.setTextSize(currentTextSize);
+        tft.drawString(opt.label, textX, centerY);
+    }
+
+#if defined(HAS_TOUCH)
+    TouchFooter();
+#endif
+}
+
 /*********************************************************************
 **  Function: loopOptions
 **  Where you choose among the options in menu
@@ -492,8 +582,13 @@ int loopOptions(
             options[index].hovered = true;
 
             bool renderedByLambda = false;
-            if (options[index].hover)
+
+            if (menuType == MENU_TYPE_MAIN && bruceConfig.menuStyle == 1) {
+                drawVerticalMenu(index, options);
+                renderedByLambda = true;
+            } else if (options[index].hover) {
                 renderedByLambda = options[index].hover(options[index].hoverPointer, true);
+            }
 
             if (!renderedByLambda) {
                 if (menuType == MENU_TYPE_SUBMENU) drawSubmenu(index, options, subText);

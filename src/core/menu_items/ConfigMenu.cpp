@@ -16,6 +16,11 @@ void ConfigMenu::optionsMenu() {
         {"Orientation", lambdaHelper(gsetRotation, true)},
         {"UI Color", setUIColor},
         {"UI Theme", setTheme},
+        {String("Menu Style: " + String(bruceConfig.menuStyle ? "Vert" : "Horiz")),
+         [=]() {
+             bruceConfig.menuStyle = !bruceConfig.menuStyle;
+             bruceConfig.saveFile();
+         }},
         {String("InstaBoot: " + String(bruceConfig.instantBoot ? "ON" : "OFF")),
          [=]() {
              bruceConfig.instantBoot = !bruceConfig.instantBoot;

@@ -28,7 +28,7 @@ void EthernetMenu::optionsMenu() {
                  run_arp_scanner();
                  eth->stop();
              } else {
-                    displayError("W5500 not found");
+                 displayError("W5500 not found");
              }
          }                        },
         {"DHCP Starvation",
@@ -38,7 +38,7 @@ void EthernetMenu::optionsMenu() {
                  DHCPStarvation();
                  eth->stop();
              } else {
-                    displayError("W5500 not found");
+                 displayError("W5500 not found");
              }
          }                        },
         {"MAC Flooding",    [this]() {
@@ -47,7 +47,7 @@ void EthernetMenu::optionsMenu() {
                  MACFlooding();
                  eth->stop();
              } else {
-                    displayError("W5500 not found");
+                 displayError("W5500 not found");
              }
          }}
     };
@@ -70,17 +70,18 @@ void EthernetMenu::drawIconImg() {
 void EthernetMenu::drawIcon(float scale) {
     clearIconArea();
 
+    // Adjusted coordinate calculation for scaling and centering
     int iconW = scale * 30;
     int iconH = scale * 40;
 
-    int Y = iconCenterY - 25;
-
+    // Scale dependent offsets
+    int Y = iconCenterY - iconH / 2 - 3; // Fixed: center vertically properly (moved up 3px)
     int smallerH = scale * 16;
 
     int starterX = iconCenterX - iconW; // X of the first side
     int finalX = iconCenterX + iconW;
 
-    int lineWidth = 2;
+    int lineWidth = (scale < 0.5) ? 1 : 2; // Thinner lines for small icons
 
     // Draw the main socket structure
     /*
@@ -115,15 +116,21 @@ void EthernetMenu::drawIcon(float scale) {
     tft.drawRect(finalX - smallerH + lineWidth, Y + iconH, lineWidth, smallerH, bruceConfig.priColor);
 
     // Draw the four cable pin at a distance of 15 pixel
+    // Draw pins
+    float pinStep = (float)(iconW * 2 - 4) / 4.0;
     for (size_t i = 0; i < 4; i++) {
-        tft.drawRect(starterX + 15 + (i * 15), Y, lineWidth, 16, bruceConfig.priColor);
+        // Distribute pins evenly
+        int pinX = starterX + 2 + (i * pinStep) + (pinStep / 2) - (lineWidth / 2);
+        // Scale pin height
+        int pinH = iconH * 0.4;
+        tft.drawRect(pinX, Y, lineWidth, pinH, bruceConfig.priColor);
     }
 
     // Close the socket calculating width of this side removing from total width, the size of the smaller size
     tft.drawRect(
         starterX + smallerH,
         Y + iconH + smallerH,
-        (iconW * 2) - (smallerH * 2) + 4,
+        (iconW * 2) - (smallerH * 2) + lineWidth * 2,
         lineWidth,
         bruceConfig.priColor
     );
