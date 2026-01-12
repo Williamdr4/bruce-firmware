@@ -63,6 +63,14 @@ JsonDocument BruceConfig::toJson() const {
     setting["colorInverted"] = colorInverted;
     setting["menuStyle"] = menuStyle;
 
+    setting["tx_Sub_433"] = tx_Sub_433;
+    setting["tx_ISM_433"] = tx_ISM_433;
+    setting["tx_434_445"] = tx_434_445;
+    setting["tx_PMR_446"] = tx_PMR_446;
+    setting["tx_446_862"] = tx_446_862;
+    setting["tx_ISM_868"] = tx_ISM_868;
+    setting["tx_High_870"] = tx_High_870;
+
     setting["badUSBBLEKeyboardLayout"] = badUSBBLEKeyboardLayout;
     setting["badUSBBLEKeyDelay"] = badUSBBLEKeyDelay;
 
@@ -355,6 +363,14 @@ void BruceConfig::fromFile(bool checkFS) {
         count++;
         log_e("Fail");
     }
+
+    if (!setting["tx_Sub_433"].isNull()) tx_Sub_433 = setting["tx_Sub_433"].as<bool>();
+    if (!setting["tx_ISM_433"].isNull()) tx_ISM_433 = setting["tx_ISM_433"].as<bool>();
+    if (!setting["tx_434_445"].isNull()) tx_434_445 = setting["tx_434_445"].as<bool>();
+    if (!setting["tx_PMR_446"].isNull()) tx_PMR_446 = setting["tx_PMR_446"].as<bool>();
+    if (!setting["tx_446_862"].isNull()) tx_446_862 = setting["tx_446_862"].as<bool>();
+    if (!setting["tx_ISM_868"].isNull()) tx_ISM_868 = setting["tx_ISM_868"].as<bool>();
+    if (!setting["tx_High_870"].isNull()) tx_High_870 = setting["tx_High_870"].as<bool>();
 
     if (!setting["badUSBBLEKeyDelay"].isNull()) {
         badUSBBLEKeyDelay = setting["badUSBBLEKeyDelay"].as<int>();

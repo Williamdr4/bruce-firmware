@@ -26,6 +26,7 @@ void ConfigMenu::optionsMenu() {
              bruceConfig.instantBoot = !bruceConfig.instantBoot;
              bruceConfig.saveFile();
          }},
+        {"Allowed TX Bands", [this]() { setAllowedBandsMenu(); }},
 #ifdef HAS_RGB_LED
         {"LED Color",
          [=]() {
@@ -154,4 +155,62 @@ void ConfigMenu::drawIcon(float scale) {
         bruceConfig.bgColor,
         false
     );
+}
+
+void ConfigMenu::setAllowedBandsMenu() {
+    int index = 0;
+    while (true) {
+        options = {
+            // < 433.04 (300-348, 387-433)
+            {String("< 433.04 MHz: " + String(bruceConfig.tx_Sub_433 ? "ON" : "OFF")),
+             [=]() {
+                 bruceConfig.tx_Sub_433 = !bruceConfig.tx_Sub_433;
+                 bruceConfig.saveFile();
+             }                                                                                                              },
+            // 433.05 - 434.79
+            {String("433.05 - 434.79 MHz: " + String(bruceConfig.tx_ISM_433 ? "ON" : "OFF")),
+             [=]() {
+                 bruceConfig.tx_ISM_433 = !bruceConfig.tx_ISM_433;
+                 bruceConfig.saveFile();
+             }                                                                                                              },
+            // 434.8 - 445.9
+            {String("434.8 - 445.9 MHz: " + String(bruceConfig.tx_434_445 ? "ON" : "OFF")),
+             [=]() {
+                 bruceConfig.tx_434_445 = !bruceConfig.tx_434_445;
+                 bruceConfig.saveFile();
+             }                                                                                                              },
+            // 446.0 - 446.2 (PMR)
+            {String("446.0 - 446.2 MHz: " + String(bruceConfig.tx_PMR_446 ? "ON" : "OFF")),
+             [=]() {
+                 bruceConfig.tx_PMR_446 = !bruceConfig.tx_PMR_446;
+                 bruceConfig.saveFile();
+             }                                                                                                              },
+            // 446.21 - 862.99
+            {String("446.21 - 862.99 MHz: " + String(bruceConfig.tx_446_862 ? "ON" : "OFF")),
+             [=]() {
+                 bruceConfig.tx_446_862 = !bruceConfig.tx_446_862;
+                 bruceConfig.saveFile();
+             }                                                                                                              },
+            // 863 - 870
+            {String("863 - 870 MHz: " + String(bruceConfig.tx_ISM_868 ? "ON" : "OFF")),
+             [=]() {
+                 bruceConfig.tx_ISM_868 = !bruceConfig.tx_ISM_868;
+                 bruceConfig.saveFile();
+             }                                                                                                              },
+            // > 870
+            {String("> 870 MHz: " + String(bruceConfig.tx_High_870 ? "ON" : "OFF")),
+             [=]() {
+                 bruceConfig.tx_High_870 = !bruceConfig.tx_High_870;
+                 bruceConfig.saveFile();
+             }                                                                                                              },
+            {"Back",                                                                          [=]() { returnToMenu = true; }}
+        };
+
+        returnToMenu = false;
+
+        index = loopOptions(options, MENU_TYPE_SUBMENU, "Allowed Bands", index);
+
+        if (returnToMenu) break;
+        if (index == -1) break;
+    }
 }

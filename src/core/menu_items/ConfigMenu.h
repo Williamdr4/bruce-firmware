@@ -14,6 +14,7 @@ public:
 
 private:
     void devMenu(void);
+    void setAllowedBandsMenu(void);
 };
 
 #endif

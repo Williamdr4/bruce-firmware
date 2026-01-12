@@ -1,4 +1,5 @@
 #include "rf_send.h"
+#include "core/display.h"
 #include "core/type_convertion.h"
 #include "rf_utils.h"
 #include <RCSwitch.h>
@@ -150,6 +151,12 @@ bool txSubFile(FS *fs, String filepath, bool hideDefaultUI) {
 
 void sendRfCommand(struct RfCodes rfcode, bool hideDefaultUI) {
     uint32_t frequency = rfcode.frequency;
+
+    if (!isFrequencyAllowed((float)frequency / 1000000.0f)) {
+        displayError("TX Disabled on Band", true);
+        return;
+    }
+
     String protocol = rfcode.protocol;
     String preset = rfcode.preset;
     String data = rfcode.data;

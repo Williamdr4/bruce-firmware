@@ -82,10 +82,43 @@ int recent_rfcodes_last_used = 0; // TODO: save/load in EEPROM
 bool rmtInstalled = true;
 static bool cc1101_spi_ready = false;
 
+// Region Lock Helper
+bool isFrequencyAllowed(float frequency) {
+    // Under 433.05 (Covers 300 up to 433.0499)
+    if (frequency < 433.05) { return bruceConfig.tx_Sub_433; }
+
+    // 433.05 - 434.79
+    if (frequency <= 434.79) { return bruceConfig.tx_ISM_433; }
+
+    // 434.79 < f < 446.0
+    // Covers 434.8 - 445.9 plus gaps
+    if (frequency < 446.0) { return bruceConfig.tx_434_445; }
+
+    // 446.0 <= f < 446.21 (PMR 446)
+    if (frequency < 446.21) { return bruceConfig.tx_PMR_446; }
+
+    // 446.21 <= f < 863.0
+    if (frequency < 863.0) { return bruceConfig.tx_446_862; }
+
+    // 863.0 <= f <= 870.0
+    if (frequency <= 870.0) { return bruceConfig.tx_ISM_868; }
+
+    // > 870.0
+    return bruceConfig.tx_High_870;
+}
+
 bool initRfModule(String mode, float frequency) {
 
     // use default frequency if no one is passed
     if (!frequency) frequency = bruceConfigPins.rfFreq;
+
+    // Region Lock Check
+    if (mode == "tx" && !isFrequencyAllowed(frequency)) {
+        Serial.print("TX Blocked by Band Toggle on freq: ");
+        Serial.println(frequency);
+        displayError("TX Disabled on Band", true);
+        return false;
+    }
 
     if (bruceConfigPins.rfModule == CC1101_SPI_MODULE) { // CC1101 in use
         if (bruceConfigPins.CC1101_bus.mosi == (gpio_num_t)TFT_MOSI &&

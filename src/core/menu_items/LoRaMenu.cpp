@@ -27,7 +27,7 @@ void LoRaMenu::drawIcon(float scale) {
 #define CALC_Y(val) (cy + ((val - 50) * scale))
 
     int lineWidth = scale * 4.5;
-    if (lineWidth < 2) lineWidth = 2;
+    // if (lineWidth < 2) lineWidth = 2;
     int ballRad = scale * 6;
 
     // --- LEGS UPDATED (Y changed from 95 to 85) ---

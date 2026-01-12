@@ -83,6 +83,15 @@ public:
     int badUSBBLEKeyDelay = 50;
     int menuStyle = 1; // 0: Old (Horizontal), 1: New (Vertical)
 
+    // RF Transmission Bands
+    bool tx_Sub_433 = true;  // < 433.04 MHz
+    bool tx_ISM_433 = true;  // 433.05 MHz - 434.79 MHz
+    bool tx_434_445 = true;  // 434.80 MHz - 445.90 MHz
+    bool tx_PMR_446 = true;  // 446.00 MHz - 446.20 MHz
+    bool tx_446_862 = true;  // 446.21 MHz - 862.99 MHz
+    bool tx_ISM_868 = true;  // 863.00 MHz - 870.00 MHz
+    bool tx_High_870 = true; // > 870.00 MHz
+
     std::vector<String> disabledMenus = {};
 
     std::vector<QrCodeEntry> qrCodes = {
