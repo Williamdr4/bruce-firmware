@@ -12,6 +12,12 @@
 #include "core/sd_functions.h"
 #include <globals.h>
 
+#if defined(T_EMBED_1101)
+#define XPOWERS_CHIP_BQ25896
+#include <XPowersLib.h>
+extern XPowersPPM PPM;
+#endif
+
 RFID125::RFID125() {
     _initial_state = READ_MODE;
     setup();
@@ -24,9 +30,13 @@ RFID125::RFID125(RFID125_State initial_state) {
 }
 
 void RFID125::setup() {
+#if defined(T_EMBED_1101)
+    PPM.enableOTG();
+    delay(1000); // Wait for module to boot
+#endif
+
     _stream = new HardwareSerial(1);
     _stream->begin(9600, SERIAL_8N1, RFID125_RX_PIN, RFID125_TX_PIN);
-
     set_state(_initial_state);
     delay(500);
     return loop();
@@ -36,6 +46,9 @@ void RFID125::loop() {
     while (1) {
         if (check(EscPress)) {
             _stream->end();
+#if defined(T_EMBED_1101)
+            PPM.disableOTG();
+#endif
             returnToMenu = true;
             break;
         }

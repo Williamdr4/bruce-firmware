@@ -9,6 +9,7 @@
 #include "tag_o_matic.h"
 #include "core/display.h"
 #include "core/mykeyboard.h"
+#include "core/utils.h"
 
 #include "PN532.h"
 #include "RFID2.h"
@@ -52,6 +53,7 @@ void TagOMatic::set_rfid_module() {
 }
 
 void TagOMatic::setup() {
+    returnToMenu = false;
     set_rfid_module();
 
     if (!_rfid->begin()) {
@@ -65,6 +67,7 @@ void TagOMatic::setup() {
 
 void TagOMatic::loop() {
     while (1) {
+        if (returnToMenu) break;
         if (check(EscPress)) {
             returnToMenu = true;
             break;
@@ -81,6 +84,7 @@ void TagOMatic::loop() {
             case CUSTOM_UID_MODE: write_custom_uid(); break;
             case WRITE_MODE: write_data(); break;
             case WRITE_NDEF_MODE: write_ndef_data(); break;
+            case EMULATE_MODE: emulate_card(); break;
             case ERASE_MODE: erase_card(); break;
             case SAVE_MODE: save_file(); break;
         }
@@ -91,6 +95,7 @@ void TagOMatic::select_state() {
     options = {};
     if (_read_uid) {
         options.emplace_back("Clone UID", [this]() { set_state(CLONE_MODE); });
+        options.emplace_back("Emulate tag", [this]() { set_state(EMULATE_MODE); });
         options.emplace_back("Custom UID", [this]() { set_state(CUSTOM_UID_MODE); });
         options.emplace_back("Check tag", [this]() { set_state(CHECK_MODE); });
         options.emplace_back("Write data", [this]() { set_state(WRITE_MODE); });
@@ -101,6 +106,7 @@ void TagOMatic::select_state() {
     options.emplace_back("Load file", [this]() { set_state(LOAD_MODE); });
     options.emplace_back("Write NDEF", [this]() { set_state(WRITE_NDEF_MODE); });
     options.emplace_back("Erase tag", [this]() { set_state(ERASE_MODE); });
+    options.emplace_back("Main Menu", []() { backToMenu(); });
 
     loopOptions(options);
 }
@@ -140,6 +146,7 @@ void TagOMatic::set_state(RFID_State state) {
             padprintln("");
             break;
         case WRITE_NDEF_MODE: _ndef_created = false; break;
+        case EMULATE_MODE: break;
         case SAVE_MODE:
         case ERASE_MODE:
         case CUSTOM_UID_MODE: break;
@@ -160,6 +167,7 @@ void TagOMatic::display_banner() {
         case ERASE_MODE: printSubtitle("ERASE MODE"); break;
         case WRITE_MODE: printSubtitle("WRITE DATA MODE"); break;
         case WRITE_NDEF_MODE: printSubtitle("WRITE NDEF MODE"); break;
+        case EMULATE_MODE: printSubtitle("EMULATE MODE"); break;
         case SAVE_MODE: printSubtitle("SAVE MODE"); break;
     }
 
@@ -485,6 +493,20 @@ void TagOMatic::save_file() {
     set_state(READ_MODE);
 }
 
+void TagOMatic::emulate_card() {
+    int result = _rfid->emulate();
+
+    if (result == RFIDInterface::NOT_IMPLEMENTED) {
+        padprintln("Function not supported");
+        padprintln("by this module");
+        delayWithReturn(2000);
+        set_state(READ_MODE);
+        return;
+    }
+
+    if (result == RFIDInterface::SUCCESS) { set_state(READ_MODE); }
+}
+
 void TagOMatic::save_scan_result() {
     FS *fs;
     if (!getFsStorage(fs)) return;
@@ -512,5 +534,11 @@ void TagOMatic::save_scan_result() {
 
 void TagOMatic::delayWithReturn(uint32_t ms) {
     auto tm = millis();
-    while (millis() - tm < ms && !returnToMenu) { vTaskDelay(pdMS_TO_TICKS(50)); }
+    while (millis() - tm < ms && !returnToMenu) {
+        if (check(EscPress)) {
+            returnToMenu = true;
+            break;
+        }
+        vTaskDelay(pdMS_TO_TICKS(50));
+    }
 }

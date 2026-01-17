@@ -3,6 +3,12 @@
 #include "utils.h"
 #include <globals.h>
 
+#if defined(T_EMBED_1101)
+#define XPOWERS_CHIP_BQ25896
+#include <XPowersLib.h>
+extern XPowersPPM PPM;
+#endif
+
 MainMenu::MainMenu() {
     _menuItems = {
         &wifiMenu,
@@ -39,6 +45,10 @@ MainMenu::MainMenu() {
 MainMenu::~MainMenu() {}
 
 void MainMenu::begin(void) {
+#if defined(T_EMBED_1101)
+    PPM.disableOTG();
+#endif
+
     returnToMenu = false;
     options = {};
 

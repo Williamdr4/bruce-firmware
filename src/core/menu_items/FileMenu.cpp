@@ -30,10 +30,11 @@ void FileMenu::drawIconImg() {
 void FileMenu::drawIcon(float scale) {
     clearIconArea();
     int iconW = scale * 32;
-    int iconH = scale * 48;
+    int iconH = scale * 48 - 7; // Make Files icon 2px less high in main menu
 
     if (iconW % 2 != 0) iconW++;
     if (iconH % 2 != 0) iconH++;
+    if (iconH < 2) iconH = 2;
 
     int foldSize = iconH / 4;
     int iconX = iconCenterX - iconW / 2;

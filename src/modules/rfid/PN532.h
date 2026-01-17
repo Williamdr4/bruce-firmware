@@ -46,6 +46,7 @@ public:
     int erase();
     int write(int cardBaudRate = PN532_MIFARE_ISO14443A);
     int write_ndef();
+    int emulate();
     int load();
     int save(String filename);
 
@@ -59,6 +60,7 @@ private:
     void format_data();
     void format_data_felica(uint8_t idm[8], uint8_t pmm[8], uint16_t sys_code);
     void parse_data();
+    void parse_tag_data(uint8_t *buffer);
     void set_uid();
 
     /////////////////////////////////////////////////////////////////////////////////////

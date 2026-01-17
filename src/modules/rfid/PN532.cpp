@@ -147,6 +147,197 @@ int PN532::write_ndef() {
     return write_ndef_blocks();
 }
 
+void PN532::parse_tag_data(uint8_t *buffer) {
+    memset(buffer, 0, 4096);
+
+    int lineStart = 0;
+    while (lineStart < strAllPages.length()) {
+        int lineEnd = strAllPages.indexOf('\n', lineStart);
+        if (lineEnd == -1) lineEnd = strAllPages.length();
+
+        String line = strAllPages.substring(lineStart, lineEnd);
+        lineStart = lineEnd + 1;
+
+        if (!line.startsWith("Page ")) continue;
+
+        int colonIndex = line.indexOf(':');
+        if (colonIndex == -1) continue;
+
+        String pageNumStr = line.substring(5, colonIndex);
+        int pageNum = pageNumStr.toInt();
+
+        String dataStr = line.substring(colonIndex + 1);
+        dataStr.trim();
+
+        int byteIndex = 0;
+        for (int i = 0; i < dataStr.length(); i++) {
+            if (dataStr[i] == ' ') continue;
+            if (i + 1 >= dataStr.length()) break;
+
+            char hex[3];
+            hex[0] = dataStr[i];
+            hex[1] = dataStr[i + 1];
+            hex[2] = 0;
+            i++;
+
+            uint8_t val = (uint8_t)strtol(hex, NULL, 16);
+
+            int address = 0;
+            if (printableUID.picc_type.indexOf("Classic") != -1) {
+                address = pageNum * 16 + byteIndex;
+            } else {
+                address = pageNum * 4 + byteIndex;
+            }
+
+            if (address < 4096) buffer[address] = val;
+            byteIndex++;
+        }
+    }
+}
+
+int PN532::emulate() {
+    uint8_t *tagMemory = (uint8_t *)malloc(4096);
+    if (!tagMemory) return FAILURE;
+
+    parse_tag_data(tagMemory);
+    bool isClassic =
+        printableUID.picc_type.indexOf("Classic") != -1 && printableUID.picc_type.indexOf("Ultralight") == -1;
+    if (printableUID.picc_type == "FeliCa") {
+        free(tagMemory);
+        return NOT_IMPLEMENTED;
+    }
+
+    uint8_t rwbuf[128];
+    bool running = true;
+    bool active = false;
+
+    // Build TgInitAsTarget payload using tag parameters
+    constexpr size_t TG_CMD_LEN = 38;
+    uint8_t fullCmd[TG_CMD_LEN];
+    memset(fullCmd, 0, TG_CMD_LEN);
+    fullCmd[0] = PN532_COMMAND_TGINITASTARGET;
+    fullCmd[1] = 0x05; // PICC only, passive only
+    fullCmd[2] = uid.atqaByte[0];
+    fullCmd[3] = uid.atqaByte[1];
+    for (uint8_t i = 0; i < 3; i++) { fullCmd[4 + i] = (i < uid.size) ? uid.uidByte[i] : 0x00; }
+    fullCmd[7] = uid.sak;
+
+    displayTextLine("Wait Reader...");
+
+    while (running) {
+        if (!active) {
+            while (!active && running) {
+                if (check(EscPress)) {
+                    running = false;
+                    break;
+                }
+                if (nfc.TgInitAsTarget(fullCmd, TG_CMD_LEN, 150)) { active = true; }
+            }
+            if (!running) break;
+            if (active) { displayTextLine("Emulating..."); }
+            continue;
+        }
+
+        if (check(EscPress)) {
+            running = false;
+            break;
+        }
+
+        uint8_t len = sizeof(rwbuf);
+        if (!nfc.TgGetData(rwbuf, &len)) {
+            active = false;
+            nfc.inRelease();
+            displayTextLine("Wait Reader...");
+            continue;
+        }
+
+        if (!len) { continue; }
+
+        uint8_t cmd = rwbuf[0];
+
+        switch (cmd) {
+            case 0x30: { // READ (16 bytes / 4 pages)
+                if (len < 2) break;
+                uint8_t addr = rwbuf[1];
+                int startByte = isClassic ? addr * 16 : addr * 4;
+                if (startByte < 0 || startByte + 16 > 4096) {
+                    uint8_t nak = 0x00;
+                    nfc.TgSetData(&nak, 1);
+                    break;
+                }
+                nfc.TgSetData(&tagMemory[startByte], 16);
+                break;
+            }
+            case 0x3A: { // FAST READ
+                if (len < 3 || isClassic) {
+                    uint8_t nak = 0x00;
+                    nfc.TgSetData(&nak, 1);
+                    break;
+                }
+                uint8_t startPage = rwbuf[1];
+                uint8_t endPage = rwbuf[2];
+                if (endPage < startPage) {
+                    uint8_t nak = 0x00;
+                    nfc.TgSetData(&nak, 1);
+                    break;
+                }
+                uint16_t pageCount = endPage - startPage + 1;
+                size_t totalBytes = pageCount * 4;
+                size_t startByte = startPage * 4;
+                size_t endByte = startByte + totalBytes;
+                if (endByte > 4096 || totalBytes > sizeof(rwbuf)) {
+                    uint8_t nak = 0x00;
+                    nfc.TgSetData(&nak, 1);
+                    break;
+                }
+                memcpy(rwbuf, &tagMemory[startByte], totalBytes);
+                nfc.TgSetData(rwbuf, totalBytes);
+                break;
+            }
+            case 0xA2: { // WRITE (Ultralight/NTAG)
+                if (len < 6 || isClassic) {
+                    uint8_t nak = 0x00;
+                    nfc.TgSetData(&nak, 1);
+                    break;
+                }
+                uint8_t addr = rwbuf[1];
+                size_t startByte = addr * 4;
+                if (startByte + 4 > 4096) {
+                    uint8_t nak = 0x00;
+                    nfc.TgSetData(&nak, 1);
+                    break;
+                }
+                memcpy(&tagMemory[startByte], &rwbuf[2], 4);
+                uint8_t ack = 0x0A;
+                nfc.TgSetData(&ack, 1);
+                break;
+            }
+            case 0x29:
+            case 0x25: { // RF field lost notifications
+                active = false;
+                nfc.inRelease();
+                displayTextLine("Wait Reader...");
+                break;
+            }
+            case 0x50: { // HLTA
+                active = false;
+                nfc.inRelease();
+                displayTextLine("Wait Reader...");
+                break;
+            }
+            default: {
+                uint8_t nak = 0x00;
+                nfc.TgSetData(&nak, 1);
+                break;
+            }
+        }
+    }
+
+    nfc.inRelease();
+    free(tagMemory);
+    return SUCCESS;
+}
+
 int PN532::load() {
     String filepath;
     File file;
